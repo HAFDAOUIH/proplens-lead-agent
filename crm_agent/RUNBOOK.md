@@ -245,18 +245,236 @@ curl -X POST "$BASE/api/t2sql/query" \
 - **DDL**: Database schema for `coreapp_lead` table
 - **10 Examples**: Cover COUNT, WHERE, GROUP BY, LIKE, date filtering, NULL handling, ORDER BY + LIMIT
 
+## Test Commands (Agent Router) ✅
+
+**IMPORTANT**: Always include `-H "Accept: application/json"` header to avoid content negotiation overhead!
+
+```bash
+BASE="http://127.0.0.1:8000"
+TOKEN="<PASTE_YOUR_ACCESS_TOKEN>"
+
+echo "=== Agent: brochure question routes to RAG ==="
+curl -s -X POST "$BASE/api/agent/query" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{"question": "What amenities does Beachgate by Address include?"}' | jq
+
+echo "=== Agent: analytics question routes to T2SQL ==="
+curl -s -X POST "$BASE/api/agent/query" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{"question": "How many leads by status?"}' | jq
+
+echo "=== Agent: low confidence triggers clarify ==="
+curl -s -X POST "$BASE/api/agent/query" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{"question": "What about that thing?"}' | jq
+
+echo "=== Agent: conversation continuity ==="
+# First query
+RESPONSE=$(curl -s -X POST "$BASE/api/agent/query" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{"question": "What properties are available?"}')
+
+# Extract thread_id
+THREAD_ID=$(echo $RESPONSE | jq -r '.thread_id')
+echo "Thread ID: $THREAD_ID"
+
+# Follow-up query in same conversation
+curl -s -X POST "$BASE/api/agent/query" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d "{\"question\": \"Tell me more about the first one\", \"thread_id\": \"$THREAD_ID\"}" | jq
+```
+
+### Agent Router Features ✅
+
+1. **Intelligent Routing** (November 2025)
+   - Uses Groq LLM (llama-3.3-70b-versatile) to classify queries
+   - Routes: `rag` (properties), `t2sql` (analytics), `clarify` (low confidence)
+   - Returns confidence scores and reasoning
+
+2. **Low-Confidence Handling** ✅
+   - Queries with confidence < 0.6 trigger `clarify` route
+   - Asks users to clarify intent instead of guessing
+   - Improves UX by avoiding incorrect responses
+
+3. **RAG Summarization** ✅
+   - Retrieves relevant chunks from ChromaDB
+   - Summarizes context using Groq LLM for concise answers (max 300 tokens)
+   - Returns source citations with project, page, file, and distance score
+   - Can be toggled via `summarize=False` parameter
+
+4. **Conversation Memory** ✅
+   - Uses LangGraph checkpointer with SQLite backend
+   - Maintains conversation state across requests via `thread_id`
+   - Enables follow-up questions and context retention
+   - Auto-generates thread_id if not provided
+
+5. **Metadata Improvements** ✅
+   - Sources now include `project_name`, `page`, `source` file, and `distance` score
+   - Properly extracts project metadata from ingested documents
+   - No more `null` values in source citations
+
+### Agent Response Schema
+
+**RAG Route:**
+```json
+{
+  "query": "What amenities does Beachgate by Address include?",
+  "route": "rag",
+  "intent": "The question asks about amenities...",
+  "confidence": 0.9,
+  "answer": "Beachgate By Address includes: 1) 1.5 KM pristine beach, 2) Panoramic sea/marina views, 3) Licensed restaurants nearby, 4) Marina and yacht club access, 5) 2 neighborhood parks, 6) Direct Sheikh Zayed Road access. These amenities provide cosmopolitan living with luxury seaside lifestyle.",
+  "sources": [
+    {
+      "project": "Beachgate by Address",
+      "page": 4,
+      "source": "beachgate_brochure.pdf",
+      "distance": 0.808,
+      "similarity": 0.596
+    }
+  ],
+  "thread_id": "6f64ba45-c8c4-48c3-9aae-e8f781f41a39"
+}
+```
+
+**Note**:
+- Answer is now concise (~150 words)
+- `similarity` score added (0-1, higher is better)
+- `project` is never null (shows "Unknown" if missing)
+
+**T2SQL Route:**
+```json
+{
+  "query": "How many leads by status?",
+  "route": "t2sql",
+  "intent": "The question is asking for a count...",
+  "confidence": 1.0,
+  "sql": "SELECT status, COUNT(*) as count FROM coreapp_lead GROUP BY status",
+  "rows": [
+    {"status": "new", "count": 45},
+    {"status": "contacted", "count": 23}
+  ],
+  "columns": ["status", "count"],
+  "thread_id": "9d79b7ad-6c2d-45ab-8e7b-905ea0cfb202"
+}
+```
+
+**Clarify Route:**
+```json
+{
+  "query": "What about that thing?",
+  "route": "clarify",
+  "intent": "Router error: low confidence...",
+  "confidence": 0.4,
+  "answer": "I'm not quite sure how to best answer your question...",
+  "thread_id": "abc123"
+}
+```
+
+## Configuration Options
+
+### RAG Summarization
+Edit `crm_agent/agent/graph.py`:
+```python
+# Disable summarization (return raw chunks)
+rag_tool = RagTool(chroma_dir=CHROMA_DIR, summarize=False)
+
+# Enable with custom model (faster/cheaper)
+rag_tool = RagTool(
+    chroma_dir=CHROMA_DIR,
+    summarize=True,
+    model="llama-3.1-8b-instant"
+)
+```
+
+### Confidence Threshold
+Edit `crm_agent/agent/graph.py` line 66:
+```python
+# Default: clarify if confidence < 0.6
+if state.confidence and state.confidence < 0.6:
+    return "clarify"
+
+# More conservative: clarify if confidence < 0.7
+if state.confidence and state.confidence < 0.7:
+    return "clarify"
+```
+
+## Recent Fixes (November 2025) ✅
+
+1. **LangGraph Checkpointer** - Fixed thread_id requirement
+   - Issue: `ValueError: Checkpointer requires thread_id`
+   - Fix: Added config parameter with thread_id when invoking graph
+   - File: `crm_agent/api/agent.py`
+
+2. **SqliteSaver Initialization** - Fixed connection object requirement
+   - Issue: `'str' object has no attribute 'executescript'`
+   - Fix: Pass SQLite connection object instead of string path
+   - File: `crm_agent/agent/graph.py`
+
+3. **Environment Variables** - Added .env loading
+   - Issue: GROQ_API_KEY not loaded, empty LLM responses
+   - Fix: Added `load_dotenv()` in Django settings.py
+   - File: `crm_agent/app/app/settings.py`
+
+4. **Router JSON Parsing** - Fixed Pydantic validation
+   - Issue: Groq returns `reasons` as list, not string
+   - Fix: Added field_validator to convert list to string
+   - File: `crm_agent/agent/router.py`
+
+5. **Markdown JSON Extraction** - Handle code blocks
+   - Issue: LLM wraps JSON in markdown code blocks
+   - Fix: Extract JSON from ```json or ``` blocks before parsing
+   - File: `crm_agent/agent/router.py`
+
+6. **Context-Aware Clarify Messages** - Smart follow-up detection
+   - Issue: Vague follow-ups like "Tell me more" trigger clarify
+   - Fix: Detect short/vague queries and provide helpful examples
+   - File: `crm_agent/agent/graph.py`
+
+7. **Conversation History in Router** - Better context understanding
+   - Issue: Router doesn't know about previous queries
+   - Fix: Pass last 3 queries to router for context-aware routing
+   - Files: `crm_agent/agent/state.py`, `crm_agent/agent/router.py`, `crm_agent/api/agent.py`
+
+## UX Polish (November 2025) ✅
+
+8. **Optimized RAG Answer Length** - Better readability
+   - Issue: Answers could be too long or verbose
+   - Fix: Target ~150 words, add truncation helper, optimize LLM prompt
+   - File: `crm_agent/agent/tools_rag.py`
+   - Impact: Faster reading, better mobile UX
+
+9. **Normalized Similarity Scores** - User-friendly metrics
+   - Issue: Raw cosine distances (0-2) not intuitive
+   - Fix: Convert to similarity scores (0-1) where 1 = perfect match
+   - Formula: `similarity = 1.0 - (distance / 2.0)`
+   - File: `crm_agent/agent/tools_rag.py`
+
+10. **Enforced Project Attribution** - No missing metadata
+    - Issue: Sources could show `null` for project
+    - Fix: Require project name on upload, validate and normalize
+    - Fallback: Shows "Unknown" instead of null
+    - Files: `crm_agent/api/docs.py`, `crm_agent/agent/tools_rag.py`
+
 ## Next goals (planned)
 1) ✅ Brochure upload + ingest to Chroma (RAG store) - **DONE**
 2) ✅ Vanna T2SQL init + seed examples - **DONE**
-   - VannaClient with Groq + ChromaDB ✅
-   - SQL executor with safety validation ✅
-   - DDL + 10 training examples seeded ✅
-   - Query endpoint working perfectly ✅
-3) **LangGraph router MVP** (RAG vs T2SQL) - **NEXT**
-   - Intent detection: brochure questions → RAG, analytics → T2SQL
-   - Graph state management
-   - Unified `/api/agent/query` endpoint
-4) Campaign creation + personalized email generation
+3) ✅ **LangGraph router MVP** (RAG vs T2SQL) - **DONE**
+   - ✅ Intent detection with confidence scoring
+   - ✅ Clarify route for low-confidence queries
+   - ✅ RAG summarization with LLM
+   - ✅ Conversation memory with checkpointer
+   - ✅ Proper metadata in sources
+4) Campaign creation + personalized email generation - **NEXT**
 5) Handle customer replies with AI agent
 6) Metrics and dashboard endpoints
 

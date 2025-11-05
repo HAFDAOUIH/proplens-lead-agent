@@ -82,12 +82,25 @@ def upload_brochures(request, files: list[UploadedFile] = File(...), project: st
                 os.remove(final_path)
             os.replace(temp_path, final_path)
 
+        # Enforce project name (required for proper source attribution)
         pj = project or _read_pdf_title(final_path)
-        if not pj:
-            raise HttpError(400, "Project name required: provide ?project=... or ensure PDF Title metadata is set.")
+        if not pj or not pj.strip():
+            raise HttpError(
+                400,
+                f"Project name required for '{f.name}': "
+                "Provide explicit ?project=... parameter or ensure PDF has Title metadata set."
+            )
+
+        # Normalize project name (trim whitespace, ensure consistency)
+        pj = pj.strip()
 
         res = ing.ingest_pdf(final_path, pj)
-        res.update({"document_id": document_id, "stored_path": final_path, "project_name": pj})
+        res.update({
+            "document_id": document_id,
+            "stored_path": final_path,
+            "project_name": pj,
+            "original_filename": f.name
+        })
         total_ins += res["inserted_chunks"]
         total_pages += res["pages_processed"]
         total_ocr += res["ocr_pages"]
