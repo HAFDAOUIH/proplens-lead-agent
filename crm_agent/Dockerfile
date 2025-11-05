@@ -43,7 +43,7 @@ COPY crm_agent/ /crm_agent/
 ENV PATH=/root/.local/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONPATH=/:/crm_agent/app \
+    PYTHONPATH=/crm_agent:/crm_agent/app \
     DJANGO_SETTINGS_MODULE=app.settings \
     CHROMA_DIR=/tmp/chroma \
     TRANSFORMERS_CACHE=/tmp/.cache \
@@ -56,8 +56,9 @@ RUN mkdir -p /tmp/chroma /tmp/.cache && \
 EXPOSE ${PORT:-8000}
 
 # Start command (using uvicorn for Django Ninja ASGI)
+# Start uvicorn first, then seed Vanna in background so healthcheck can pass
 CMD cd /crm_agent/app && \
     python manage.py migrate --noinput && \
-    (python manage.py seed_vanna_on_startup || echo "Vanna seed skipped") && \
+    (python manage.py seed_vanna_on_startup > /tmp/vanna_seed.log 2>&1 &) && \
     echo "Starting Uvicorn on port ${PORT:-8000}..." && \
     exec uvicorn app.asgi:application --host 0.0.0.0 --port ${PORT:-8000}
