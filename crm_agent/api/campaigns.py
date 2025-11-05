@@ -24,18 +24,56 @@ agent_graph = build_graph()
 
 
 class CreateCampaignRequest(BaseModel):
+    """Campaign creation request with lead targeting."""
     name: str
     project: str
     channel: str = "email"
     offer_text: str = ""
     lead_ids: List[int]
 
+    class Config:
+        schema_extra = {
+            "example": {
+                "name": "Beachgate Launch Campaign",
+                "project": "Beachgate by Address",
+                "channel": "email",
+                "offer_text": "Exclusive 5% early bird discount",
+                "lead_ids": [1, 2, 3]
+            }
+        }
+
 
 class LeadReplyRequest(BaseModel):
+    """Lead reply message."""
     message: str
 
+    class Config:
+        schema_extra = {
+            "example": {
+                "message": "I am interested in scheduling a site visit. What times are available?"
+            }
+        }
 
-@router.post("/campaigns")
+
+@router.post("/campaigns", summary="Create Campaign with AI-Generated Emails", description="""
+Create a new outreach campaign with AI-generated personalized emails.
+
+The system will:
+1. Create a Campaign record
+2. For each lead, generate a unique personalized email using:
+   - Lead profile (name, budget, unit preferences, conversation history)
+   - RAG-retrieved property information from brochures
+   - Campaign offer text
+3. Mock "send" the messages (set delivered=True)
+4. Return summary with sample messages
+
+**Personalization includes:**
+- Lead name and custom greeting
+- Budget-specific unit recommendations
+- Unit type preferences matching lead profile
+- Property features relevant to lead
+- Campaign offer integration
+""")
 def create_campaign(request, payload: CreateCampaignRequest):
     """
     Create a campaign and generate personalized messages for each lead.
@@ -190,7 +228,18 @@ def handle_lead_reply(request, campaign_id: int, lead_id: int, payload: LeadRepl
     }
 
 
-@router.get("/campaigns/{campaign_id}/followups")
+@router.get("/campaigns/{campaign_id}/followups", summary="Get Campaign Followups", description="""
+Get all conversation threads for a campaign.
+
+Returns a list of threads with:
+- Lead contact information
+- Message count and recent messages (last 5)
+- Last updated timestamp
+- Goal achievement status
+- Proposed date for site visit/meeting
+
+Use this endpoint to build a "Followups" screen showing all ongoing conversations.
+""")
 def get_followups(request, campaign_id: int):
     """
     Get all conversation threads for a campaign (followups screen).
@@ -232,7 +281,17 @@ def get_followups(request, campaign_id: int):
     }
 
 
-@router.get("/campaigns/{campaign_id}/metrics")
+@router.get("/campaigns/{campaign_id}/metrics", summary="Get Campaign Metrics", description="""
+Get campaign performance metrics and KPIs.
+
+**Metrics returned:**
+- `leads_shortlisted`: Total leads targeted in campaign
+- `messages_sent`: Total messages sent
+- `unique_leads_responded`: Number of unique leads who replied
+- `goals_achieved_count`: Number of threads where goal was achieved (site visit scheduled, etc.)
+
+Use this to build a campaign dashboard showing performance and engagement.
+""")
 def get_campaign_metrics(request, campaign_id: int):
     """
     Get campaign performance metrics.

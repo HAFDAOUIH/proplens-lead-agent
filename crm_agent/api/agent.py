@@ -10,11 +10,60 @@ graph = build_graph()
 
 
 class AgentQuery(BaseModel):
+    """Agent query request with conversation tracking."""
     question: str
     thread_id: str | None = None
 
+    class Config:
+        schema_extra = {
+            "example": {
+                "question": "What amenities does Beachgate by Address have?",
+                "thread_id": "optional-thread-id-for-conversation-continuity"
+            }
+        }
 
-@router.post("/agent/query")
+
+@router.post("/agent/query", summary="Query AI Agent", description="""
+Query the intelligent agent router that automatically routes your question to the appropriate tool:
+
+- **RAG Route**: Property-related questions (amenities, location, units, etc.)
+- **T2SQL Route**: Analytics and database queries (counts, lists, statistics)
+- **Clarify Route**: Ambiguous queries that need clarification
+
+The agent maintains conversation history using thread_id for follow-up questions.
+
+**Examples:**
+
+*Property Question (RAG):*
+```json
+{
+  "question": "What amenities does Beachgate have?"
+}
+```
+
+*Analytics Question (T2SQL):*
+```json
+{
+  "question": "How many Connected leads do we have?"
+}
+```
+
+*Follow-up Question:*
+```json
+{
+  "question": "Tell me more about the first one",
+  "thread_id": "previous-thread-id"
+}
+```
+
+**Response includes:**
+- `route`: Which tool was used (rag/t2sql/clarify)
+- `answer`: The generated answer
+- `sources`: (RAG only) Source documents with metadata
+- `sql`, `rows`, `columns`: (T2SQL only) Query and results
+- `confidence`: Routing confidence score
+- `thread_id`: Use this for follow-up questions
+""")
 def agent_query(request, payload: AgentQuery):
     # Generate thread_id if not provided (for conversation tracking)
     thread_id = payload.thread_id or str(uuid.uuid4())

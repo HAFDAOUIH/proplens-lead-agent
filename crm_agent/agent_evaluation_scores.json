@@ -1,0 +1,39 @@
+{
+  "evaluation_date": "2025-11-05",
+  "model": "groq/llama-3.1-70b-versatile",
+  "metrics": {
+    "average_faithfulness": 1.0,
+    "average_relevancy": 0.8
+  },
+  "test_cases": [
+    {
+      "test_case": 1,
+      "question": "What amenities are available at Beachgate by Address?",
+      "answer": "At Beachgate By Address, available amenities include:\n* Swimming Pool & Kids' Pool\n* Multi-Function Room\n* Fully Equipped Gym\n* Retail Options at Ground Level\nAdditionally, residents have access to:\n*",
+      "sources_count": 4,
+      "faithfulness_score": 1.0,
+      "relevancy_score": 0.8
+    },
+    {
+      "test_case": 2,
+      "question": "What is the payment plan for properties?",
+      "answer": "The payment plan for properties is not explicitly stated in the provided context. However, for more information on payment plans, you can:\n* Call 800 36227 (UAE) / +971 4 366 1688 (International)\n* Ta",
+      "sources_count": 4,
+      "faithfulness_score": 1.0,
+      "relevancy_score": 0.8
+    },
+    {
+      "test_case": 3,
+      "question": "What types of units are available?",
+      "answer": "The available units at Beachgate By Address include:\n* One-bedroom apartments\n* Two-bedroom apartments\n* Three-bedroom apartments\n* Four-bedroom apartments\n* Four-bedroom penthouses\n* Duplex penthouse",
+      "sources_count": 4,
+      "faithfulness_score": 1.0,
+      "relevancy_score": 0.8
+    }
+  ],
+  "summary": {
+    "total_cases": 3,
+    "successful_cases": 3,
+    "failed_cases": 0
+  }
+}

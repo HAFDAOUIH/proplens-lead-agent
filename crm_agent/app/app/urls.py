@@ -30,7 +30,73 @@ from crm_agent.api.t2sql import router as t2sql_router
 from crm_agent.api.agent import router as agent_router
 from crm_agent.api.campaigns import router as campaigns_router
 
-api = NinjaAPI(title="CRM Agent API")
+api = NinjaAPI(
+    title="CRM Agent API",
+    version="1.0.0",
+    description="""
+# CRM Agent - AI-Powered Lead Nurturing System
+
+An intelligent CRM system that uses AI agents to nurture leads, answer property inquiries, and automate personalized outreach campaigns.
+
+## Features
+
+- **AI Agent Router**: Intelligent query routing using LangGraph (RAG/T2SQL/Clarify)
+- **RAG**: Semantic search over property brochures with ChromaDB
+- **Text-to-SQL**: Natural language database queries with Vanna AI + Groq
+- **Campaign Management**: AI-powered personalized email generation
+- **Lead Management**: Advanced filtering and conversation tracking
+
+## Authentication
+
+Most endpoints require JWT authentication. Get your token from `/api/auth/login`:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/auth/login \\
+  -H "Content-Type: application/json" \\
+  -d '{"username": "admin", "password": "admin"}'
+```
+
+Use the `access` token in the Authorization header:
+```
+Authorization: Bearer <your-access-token>
+```
+
+## Quick Examples
+
+### Agent Query (Property Question)
+```bash
+POST /api/agent/query
+{"question": "What amenities does Beachgate have?"}
+```
+
+### Agent Query (Analytics)
+```bash
+POST /api/agent/query
+{"question": "How many Connected leads do we have?"}
+```
+
+### Create Campaign
+```bash
+POST /api/campaigns
+{
+  "name": "Campaign Name",
+  "project": "Beachgate by Address",
+  "channel": "email",
+  "offer_text": "5% discount",
+  "lead_ids": [1, 2, 3]
+}
+```
+
+## Documentation
+
+- Full README: `/README.md`
+- Test Commands: `/RUNBOOK.md`
+- GitHub: [Repository URL]
+    """,
+    docs_url="/docs",
+    openapi_url="/openapi.json",
+)
+
 api.add_router("", health_router)
 api.add_router("", auth_router)
 api.add_router("", leads_router)
