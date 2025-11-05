@@ -53,19 +53,15 @@ COPY --chown=appuser:appuser . .
 # Switch to non-root user
 USER appuser
 
-# Expose port
+# Expose port (Railway uses dynamic PORT)
 EXPOSE 8000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/api/health || exit 1
 
 # Run migrations and start server
 CMD cd app && \
     python manage.py migrate --noinput && \
     python manage.py collectstatic --noinput && \
     gunicorn app.wsgi:application \
-    --bind 0.0.0.0:8000 \
+    --bind 0.0.0.0:${PORT:-8000} \
     --workers 2 \
     --threads 4 \
     --timeout 120 \
