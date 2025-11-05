@@ -1,7 +1,7 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "crm_agent/Dockerfile"
-dockerContext = "crm_agent"
+# dockerContext removed - Railway builds from repo root
 
 [deploy]
 healthcheckPath = "/api/health"

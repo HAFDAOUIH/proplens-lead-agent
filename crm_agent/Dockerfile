@@ -11,15 +11,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Copy requirements first (for better caching)
-# dockerContext = "crm_agent", so requirements.txt is at root of context
-COPY requirements.txt /app/requirements.txt
+# Railway builds from repo root, so use crm_agent/ prefix
+COPY crm_agent/requirements.txt /app/requirements.txt
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy application code (context is crm_agent/, so . copies crm_agent contents)
-COPY . /app/
+# Copy application code (Railway builds from repo root)
+COPY crm_agent/ /app/
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
