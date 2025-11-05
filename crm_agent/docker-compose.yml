@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  crm-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crm-agent
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=app.settings
+      - PYTHONPATH=/app
+      - DEBUG=False
+      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - SECRET_KEY=${SECRET_KEY}
+      - CHROMA_DIR=/app/data/chroma
+    volumes:
+      # Persistent data storage
+      - chroma_data:/app/data/chroma
+      - brochures_data:/app/data/brochures
+      - checkpoints_data:/app/data/checkpoints
+      - db_data:/app/app/db.sqlite3
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - crm-network
+
+volumes:
+  chroma_data:
+    driver: local
+  brochures_data:
+    driver: local
+  checkpoints_data:
+    driver: local
+  db_data:
+    driver: local
+
+networks:
+  crm-network:
+    driver: bridge

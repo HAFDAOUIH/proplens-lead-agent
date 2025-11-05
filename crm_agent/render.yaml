@@ -1,0 +1,43 @@
+# Render.com deployment configuration
+services:
+  - type: web
+    name: crm-agent
+    env: python
+    region: oregon
+    plan: starter
+    branch: main
+    buildCommand: |
+      pip install -r requirements.txt
+      cd app && python manage.py migrate --noinput
+      cd app && python manage.py collectstatic --noinput
+    startCommand: |
+      cd app && gunicorn app.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: DJANGO_SETTINGS_MODULE
+        value: app.settings
+      - key: PYTHONPATH
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: False
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: CHROMA_DIR
+        value: /opt/render/project/src/data/chroma
+
+    # Persistent disk for ChromaDB and database
+    disk:
+      name: crm-agent-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 10
+
+    # Auto-deploy on push
+    autoDeploy: true
