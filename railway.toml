@@ -1,6 +1,7 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "crm_agent/Dockerfile"
+dockerContext = "crm_agent"
 watchPatterns = ["crm_agent/**"]
 
 [deploy]
