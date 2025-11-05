@@ -36,13 +36,14 @@ WORKDIR /app
 COPY --from=builder /root/.local /root/.local
 
 # Copy only application code (excludes data/, tests/, etc. via .dockerignore)
-COPY crm_agent/ /app/
+# Copy to /crm_agent/ to match import paths (from crm_agent.x import y)
+COPY crm_agent/ /crm_agent/
 
 # Make sure scripts in .local are usable
 ENV PATH=/root/.local/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONPATH=/app:/app/app \
+    PYTHONPATH=/:/crm_agent/app \
     DJANGO_SETTINGS_MODULE=app.settings \
     CHROMA_DIR=/tmp/chroma \
     TRANSFORMERS_CACHE=/tmp/.cache \
@@ -55,7 +56,7 @@ RUN mkdir -p /tmp/chroma /tmp/.cache && \
 EXPOSE ${PORT:-8000}
 
 # Start command (using uvicorn for Django Ninja ASGI)
-CMD cd /app/app && \
+CMD cd /crm_agent/app && \
     python manage.py migrate --noinput && \
     python manage.py seed_vanna_on_startup 2>/dev/null || true && \
     uvicorn app.asgi:application --host 0.0.0.0 --port ${PORT:-8000}
