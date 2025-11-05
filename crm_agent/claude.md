@@ -90,31 +90,31 @@ This plan breaks the challenge into small, verifiable steps (15–60 minutes eac
   - **How**: Chroma similarity search k=4; concise answer 120–150 words; include sources.
   - **Done**: Amenity Q returns grounded answer with 2–4 sources.
 
-## 5) Campaigns + messaging
-- **Mini 1 — Models**
+## 5) Campaigns + messaging ✅
+- **Mini 1 — Models** ✅
   - **Why**: Track campaigns and conversations.
-  - **What**: `Campaign`, `Message`, `Thread`, `ThreadMessage` in `core/models.py`.
+  - **What**: `Campaign`, `Message`, `Thread`, `ThreadMessage` in `coreapp/models.py`.
   - **How**: Define models; migrate.
-  - **Done**: Tables exist.
+  - **Done**: ✅ Tables exist; migration applied.
 
-- **Mini 2 — Create campaign + generate emails**
+- **Mini 2 — Create campaign + generate emails** ✅
   - **Why**: Hyper‑personalized outreach.
   - **What**: POST `/api/campaigns` with `{project, channel, offer_text, lead_ids[]}`; generate body using lead profile + top brochure chunks + offer; mock send.
-  - **How**: `core/services.py` builds prompts; `core/mailer.py` logs/saves sends.
-  - **Done**: Response `{sent_count, sample_messages}`; DB rows inserted.
+  - **How**: `core/campaign_service.py` builds prompts with RAG + LLM; `api/campaigns.py` handles API.
+  - **Done**: ✅ Response `{sent_count, sample_messages}`; DB rows inserted. AI generates personalized subject + 200-250 word body.
 
-- **Mini 3 — Reply simulation → agent**
+- **Mini 3 — Reply simulation → agent** ✅
   - **Why**: Handle follow‑ups via router.
   - **What**: POST `/api/campaigns/{id}/lead/{lead_id}/reply` stores lead message and agent answer; GET `/api/campaigns/{id}/followups` lists threads.
-  - **How**: Save `ThreadMessage(role="lead")`, call graph, save agent reply.
-  - **Done**: RAG response stored; followups endpoint shows thread.
+  - **How**: Save `ThreadMessage(role="lead")`, call graph with config, save agent reply.
+  - **Done**: ✅ RAG/T2SQL/Clarify responses stored; followups endpoint shows thread with recent messages.
 
-## 6) Metrics + dashboard endpoints
-- **Mini 1 — Metrics**
+## 6) Metrics + dashboard endpoints ✅
+- **Mini 1 — Metrics** ✅
   - **Why**: Demonstrate KPIs.
   - **What**: GET `/api/campaigns/{id}/metrics` → `leads_shortlisted, messages_sent, unique_leads_responded, goals_achieved_count`.
   - **How**: Aggregate queries on models.
-  - **Done**: Non‑zero after a test run.
+  - **Done**: ✅ Fully implemented; returns all KPIs.
 
 - **Mini 2 — Goals list**
   - **Why**: “Followups” screen.

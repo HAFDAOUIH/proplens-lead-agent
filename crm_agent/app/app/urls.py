@@ -28,6 +28,7 @@ from crm_agent.api.leads import router as leads_router
 from crm_agent.api.docs import router as docs_router
 from crm_agent.api.t2sql import router as t2sql_router
 from crm_agent.api.agent import router as agent_router
+from crm_agent.api.campaigns import router as campaigns_router
 
 api = NinjaAPI(title="CRM Agent API")
 api.add_router("", health_router)
@@ -36,6 +37,7 @@ api.add_router("", leads_router)
 api.add_router("", docs_router)
 api.add_router("", t2sql_router)
 api.add_router("", agent_router)
+api.add_router("", campaigns_router)
 
 urlpatterns = [
     path("admin/", admin.site.urls),

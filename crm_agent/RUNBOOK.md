@@ -2,6 +2,123 @@
 
 This file tracks what's DONE so far and gives copy‑pasteable commands to verify each step locally.
 
+## Quick Test Suite (Copy & Paste)
+
+```bash
+# SETUP - Replace with your actual token after login
+BASE="http://127.0.0.1:8000"
+TOKEN="<YOUR_ACCESS_TOKEN>"
+H="Authorization: Bearer $TOKEN"
+CT="Content-Type: application/json"
+ACC="Accept: application/json"
+
+# ============================================
+# 1. HEALTH & AUTH
+# ============================================
+echo "=== Health Check ==="
+curl -s "$BASE/api/health" | jq
+
+echo "=== Login (Get Token) ==="
+curl -s -X POST "$BASE/api/auth/login" \
+  -H "$CT" \
+  -d '{"username": "admin", "password": "admin"}' | jq
+
+# Copy the access token from response and set it:
+# TOKEN="eyJ..."
+
+# ============================================
+# 2. AGENT ROUTER (Main Feature)
+# ============================================
+echo "=== Agent: RAG Route (Property Questions) ==="
+curl -s -X POST "$BASE/api/agent/query" \
+  -H "$H" -H "$CT" -H "$ACC" \
+  -d '{"question": "What amenities does Beachgate by Address have?"}' | jq
+
+echo "=== Agent: T2SQL Route (Analytics) ==="
+curl -s -X POST "$BASE/api/agent/query" \
+  -H "$H" -H "$CT" -H "$ACC" \
+  -d '{"question": "How many Connected leads?"}' | jq
+
+echo "=== Agent: Clarify Route (Vague Query) ==="
+curl -s -X POST "$BASE/api/agent/query" \
+  -H "$H" -H "$CT" -H "$ACC" \
+  -d '{"question": "What about that?"}' | jq
+
+# ============================================
+# 3. CAMPAIGNS (AI Personalization)
+# ============================================
+echo "=== Create Campaign with AI-Generated Emails ==="
+curl -s -X POST "$BASE/api/campaigns" \
+  -H "$H" -H "$CT" \
+  -d '{
+    "name": "Beachgate Q1 Launch",
+    "project": "Beachgate by Address",
+    "channel": "email",
+    "offer_text": "Limited time: 5% early bird discount",
+    "lead_ids": [1, 2, 3]
+  }' | jq
+
+# Save campaign_id from response (usually 1 for first campaign)
+CAMPAIGN_ID=1
+
+echo "=== Handle Lead Reply (Agent Routing) ==="
+curl -s -X POST "$BASE/api/campaigns/$CAMPAIGN_ID/lead/1/reply" \
+  -H "$H" -H "$CT" \
+  -d '{"message": "What amenities are available?"}' | jq
+
+echo "=== Get Campaign Followups ==="
+curl -s "$BASE/api/campaigns/$CAMPAIGN_ID/followups" \
+  -H "$H" -H "$ACC" | jq
+
+echo "=== Get Campaign Metrics ==="
+curl -s "$BASE/api/campaigns/$CAMPAIGN_ID/metrics" \
+  -H "$H" -H "$ACC" | jq
+
+# ============================================
+# 4. TEXT-TO-SQL (Vanna)
+# ============================================
+echo "=== Natural Language → SQL ==="
+curl -s -X POST "$BASE/api/t2sql/query" \
+  -H "$H" -H "$CT" \
+  -d '{"question": "Count leads by project"}' | jq
+
+# ============================================
+# 5. LEADS - Shortlist
+# ============================================
+echo "=== Shortlist Leads (2 Filters Minimum) ==="
+curl -s -X POST "$BASE/api/leads/shortlist" \
+  -H "$H" -H "$CT" \
+  -d '{
+    "project_enquired": "Beachgate by Address",
+    "status": "Connected"
+  }' | jq
+
+# ============================================
+# 6. DOCUMENTS - RAG Search
+# ============================================
+echo "=== Search Brochures (Semantic) ==="
+curl -s "$BASE/api/docs/search?q=amenities&k=4" \
+  -H "$H" -H "$ACC" | jq
+
+echo "=== Count Documents in ChromaDB ==="
+curl -s "$BASE/api/docs/count" \
+  -H "$H" | jq
+```
+
+## Expected Results Summary
+
+| Test | Expected Output |
+|------|-----------------|
+| **Agent RAG** | `route: "rag"`, `confidence: 0.9`, answer with sources |
+| **Agent T2SQL** | `route: "t2sql"`, `confidence: 1.0`, SQL + rows |
+| **Agent Clarify** | `route: "clarify"`, helpful message with examples |
+| **Campaign Creation** | `sent_count: 3`, 3 unique personalized emails |
+| **Lead Reply** | Agent response routed through RAG/T2SQL/Clarify |
+| **Campaign Metrics** | Accurate KPIs (sent, responded, goals) |
+| **T2SQL Query** | Valid SQL + query results |
+| **Shortlist** | Filtered leads matching criteria |
+| **Doc Search** | Top k=4 relevant chunks with similarity scores |
+
 ## Stack
 - Framework: Django + Django Ninja
 - Auth: JWT (SimpleJWT)
@@ -294,6 +411,71 @@ curl -s -X POST "$BASE/api/agent/query" \
   -d "{\"question\": \"Tell me more about the first one\", \"thread_id\": \"$THREAD_ID\"}" | jq
 ```
 
+## Test Commands (Campaigns) ✅
+
+```bash
+BASE="http://127.0.0.1:8000"
+TOKEN="<PASTE_YOUR_ACCESS_TOKEN>"
+
+echo "=== Create Campaign with AI-generated personalized emails ==="
+curl -s -X POST "$BASE/api/campaigns" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Beachgate Q1 Promotion",
+    "project": "Beachgate by Address",
+    "channel": "email",
+    "offer_text": "Limited time: 5% early bird discount for January bookings",
+    "lead_ids": [1, 2, 3]
+  }' | jq
+
+# Save campaign ID from response
+CAMPAIGN_ID=1
+
+echo "=== Handle lead reply (routes through agent) ==="
+curl -s -X POST "$BASE/api/campaigns/$CAMPAIGN_ID/lead/1/reply" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "I am interested in the amenities. What facilities are available?"
+  }' | jq
+
+echo "=== Get campaign followups (conversation threads) ==="
+curl -s -X GET "$BASE/api/campaigns/$CAMPAIGN_ID/followups" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" | jq
+
+echo "=== Get campaign metrics ==="
+curl -s -X GET "$BASE/api/campaigns/$CAMPAIGN_ID/metrics" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" | jq
+```
+
+### Campaign Features ✅
+
+1. **AI-Powered Email Generation**
+   - Retrieves relevant brochure content using RAG (k=3 chunks)
+   - Personalizes based on lead profile (name, budget, unit type, conversation history)
+   - Groq LLM generates compelling subject line + 200-250 word body
+   - Professional tone with clear call-to-action
+
+2. **Reply Handling with Agent Routing**
+   - Lead replies route through LangGraph agent
+   - Supports RAG (property questions), T2SQL (analytics), and Clarify
+   - Maintains conversation continuity with thread_id
+   - Automatically marks messages as "replied"
+
+3. **Conversation Tracking**
+   - Thread model links campaigns, leads, and messages
+   - ThreadMessage stores all back-and-forth exchanges
+   - Goal tracking (achieved status, type, proposed dates)
+
+4. **Campaign Metrics**
+   - `leads_shortlisted`: Total leads targeted
+   - `messages_sent`: Total emails generated
+   - `unique_leads_responded`: Leads who replied
+   - `goals_achieved_count`: Successful conversions
+
 ### Agent Router Features ✅
 
 1. **Intelligent Routing** (November 2025)
@@ -465,17 +647,32 @@ if state.confidence and state.confidence < 0.7:
     - Fallback: Shows "Unknown" instead of null
     - Files: `crm_agent/api/docs.py`, `crm_agent/agent/tools_rag.py`
 
+### Campaigns + Messaging ✅
+- [x] Campaign models (Campaign, Message, Thread, ThreadMessage)
+- [x] Campaign service with AI-powered email generation
+  - Uses RAG to retrieve relevant brochure content
+  - Personalizes based on lead profile (budget, unit type, history)
+  - Groq LLM generates subject + body (200-250 words)
+- [x] Campaign creation API
+  - POST `/api/campaigns` - Create campaign and generate emails
+  - Returns sample messages for review
+- [x] Reply handling with agent routing
+  - POST `/api/campaigns/{id}/lead/{lead_id}/reply` - Handle lead replies
+  - Routes through LangGraph agent (RAG/T2SQL/Clarify)
+  - Maintains conversation thread with history
+- [x] Followups endpoint
+  - GET `/api/campaigns/{id}/followups` - List all threads
+  - Shows recent messages, goal status
+- [x] Metrics endpoint
+  - GET `/api/campaigns/{id}/metrics` - Campaign KPIs
+  - Tracks: leads targeted, messages sent, responses, goals achieved
+
 ## Next goals (planned)
 1) ✅ Brochure upload + ingest to Chroma (RAG store) - **DONE**
 2) ✅ Vanna T2SQL init + seed examples - **DONE**
 3) ✅ **LangGraph router MVP** (RAG vs T2SQL) - **DONE**
-   - ✅ Intent detection with confidence scoring
-   - ✅ Clarify route for low-confidence queries
-   - ✅ RAG summarization with LLM
-   - ✅ Conversation memory with checkpointer
-   - ✅ Proper metadata in sources
-4) Campaign creation + personalized email generation - **NEXT**
-5) Handle customer replies with AI agent
-6) Metrics and dashboard endpoints
+4) ✅ Campaign creation + personalized email generation - **DONE**
+5) ✅ Handle customer replies with AI agent - **DONE**
+6) ✅ Metrics and dashboard endpoints - **DONE**
 
 
