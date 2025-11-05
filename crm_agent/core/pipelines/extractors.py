@@ -27,16 +27,22 @@ class PdfExtractor:
             chars = len(txt)
 
             # OCR fallback if text layer is likely insufficient
+            # Gracefully handles missing Tesseract (optional for deployment)
             is_ocr = False
             if chars < 200:
-                images = convert_from_path(pdf_path, dpi=300, first_page=idx, last_page=idx)
-                if images:
-                    ocr_text = pytesseract.image_to_string(images[0], lang=self.ocr_lang)
-                    ocr_text = _normalize_text(ocr_text)
-                    if len(ocr_text) > chars:
-                        txt = ocr_text
-                        chars = len(txt)
-                        is_ocr = True
+                try:
+                    images = convert_from_path(pdf_path, dpi=300, first_page=idx, last_page=idx)
+                    if images:
+                        ocr_text = pytesseract.image_to_string(images[0], lang=self.ocr_lang)
+                        ocr_text = _normalize_text(ocr_text)
+                        if len(ocr_text) > chars:
+                            txt = ocr_text
+                            chars = len(txt)
+                            is_ocr = True
+                except (Exception, ImportError, FileNotFoundError) as e:
+                    # OCR not available (Tesseract not installed) - use text layer only
+                    # This is expected in deployment environments without OCR support
+                    pass
 
             # skip super-short garbage
             if chars >= 50:
