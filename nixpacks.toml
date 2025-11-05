@@ -1,0 +1,15 @@
+# Railway Nixpacks configuration
+[phases.setup]
+nixPkgs = ["python312", "gcc", "g++"]
+
+[phases.install]
+cmds = ["cd crm_agent && pip install -r requirements.txt"]
+
+[phases.build]
+cmds = [
+  "cd crm_agent/app && python manage.py migrate --noinput",
+  "cd crm_agent/app && python manage.py collectstatic --noinput"
+]
+
+[start]
+cmd = "cd crm_agent/app && gunicorn app.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120"
