@@ -11,13 +11,14 @@ ENV/
 *.egg-info/
 dist/
 build/
+.pytest_cache/
 
 # Django
 *.log
 *.pot
 *.pyc
-db.sqlite3
-db.sqlite3-journal
+db.sqlite3*
+*.sqlite3*
 media/
 staticfiles/
 
@@ -45,19 +46,37 @@ Thumbs.db
 *.md
 !README.md
 docs/
+DEPLOYMENT*.md
+render.yaml
+claude.md
+RUNBOOK.md
 
 # Tests
 tests/
-.pytest_cache/
 .coverage
 htmlcov/
 *.cover
+run_tests.py
+agent_evaluation_scores.json
 
-# Data (will be mounted as volumes)
+# Data (ephemeral, will be recreated)
 data/chroma/
 data/brochures/
 data/checkpoints/
+data/brochure/
+*.pdf
+*.xlsx
+*.docx
 
 # Deployment
 docker-compose.yml
-.dockerignore
+Dockerfile.backup
+railway.toml
+
+# Large files
+*.zip
+*.tar.gz
+*.deb
+
+# Challenge files
+AI Engineer Challenge/
