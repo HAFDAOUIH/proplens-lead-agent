@@ -1,6 +1,6 @@
 # Railway Nixpacks configuration
 [phases.setup]
-nixPkgs = ["python312", "gcc", "g++"]
+nixPkgs = ["python312"]
 
 [phases.install]
 cmds = ["cd crm_agent && pip install -r requirements.txt"]
