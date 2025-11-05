@@ -58,5 +58,6 @@ EXPOSE ${PORT:-8000}
 # Start command (using uvicorn for Django Ninja ASGI)
 CMD cd /crm_agent/app && \
     python manage.py migrate --noinput && \
-    python manage.py seed_vanna_on_startup 2>/dev/null || true && \
-    uvicorn app.asgi:application --host 0.0.0.0 --port ${PORT:-8000}
+    (python manage.py seed_vanna_on_startup || echo "Vanna seed skipped") && \
+    echo "Starting Uvicorn on port ${PORT:-8000}..." && \
+    exec uvicorn app.asgi:application --host 0.0.0.0 --port ${PORT:-8000}
