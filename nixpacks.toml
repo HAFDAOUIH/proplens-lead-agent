@@ -1,15 +1,20 @@
-# Railway Nixpacks configuration
-[phases.setup]
-nixPkgs = ["python312"]
+# Railway Nixpacks configuration for Python Django app
 
+# Tell Nixpacks this is a Python project
+[variables]
+NIXPACKS_PYTHON_VERSION = "3.12"
+
+# Install Python packages
 [phases.install]
-cmds = ["cd crm_agent && python -m pip install -r requirements.txt"]
+cmds = ["pip install -r crm_agent/requirements.txt"]
 
+# Run Django setup commands
 [phases.build]
 cmds = [
   "cd crm_agent/app && python manage.py migrate --noinput",
   "cd crm_agent/app && python manage.py collectstatic --noinput"
 ]
 
+# Start the application
 [start]
 cmd = "cd crm_agent/app && gunicorn app.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120"
