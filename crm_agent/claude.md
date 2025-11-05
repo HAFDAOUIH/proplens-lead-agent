@@ -5,12 +5,20 @@ This plan breaks the challenge into small, verifiable steps (15–60 minutes eac
 ## Current progress snapshot
 - [x] Repo skeleton + health routes
 - [x] JWT login + protected route
-- [x] Leads foundation (Mini 1–3)
+- [x] Leads foundation (Mini 1–3) ✅
   - [x] `Lead` model + migrations (`crm_id`, `country_code`, core fields)
   - [x] CRM .xlsx import API (header-aware; openpyxl; clear errors)
   - [x] Shortlist API with ≥2 filters rule; case-insensitive/substring logic
-- [x] RUNBOOK with cURL scripts
-- [ ] Brochure upload/ingest (in progress, see next goals)
+- [x] Vector/RAG base (Mini 1–2) ✅
+  - [x] Embeddings + ChromaDB infrastructure
+  - [x] Brochure upload + ingest pipeline (PDF extraction, OCR fallback, token-based chunking)
+  - [x] Search API for semantic search over brochures
+- [x] Vanna Text-to-SQL (Mini 1–3) ✅
+  - [x] VannaClient initialization with Groq + ChromaDB
+  - [x] SQL executor with safety validation
+  - [x] DDL + 10 training examples seeded
+  - [x] Query and seed API endpoints
+- [x] RUNBOOK with comprehensive cURL scripts ✅
 
 ## 1) Leads foundation
 - **Mini 1 — Create `Lead` model**
@@ -50,18 +58,24 @@ This plan breaks the challenge into small, verifiable steps (15–60 minutes eac
     - `core/vector_store.py`: `ChromaStore`
   - **Done**: Debug GET `/api/docs/search?q=amenities&project=Beachgate by Address` returns k≈4 relevant chunks with page refs.
 
-## 3) Vanna Text‑to‑SQL
+## 3) Vanna Text‑to‑SQL ✅
 - **Mini 1 — Initialize Vanna with Groq + Chroma**
   - **Why**: Meet T2SQL requirement without paid OpenAI.
-  - **What**: Vanna uses Groq’s OpenAI‑compatible API and Chroma corpus.
-  - **How**: `crm_agent/agent/tools_t2sql.py` with `run_t2sql(query) -> {rows, sql, summary}`.
-  - **Done**: “How many leads total?” returns a correct number.
+  - **What**: Vanna uses Groq's OpenAI‑compatible API and Chroma corpus.
+  - **How**: `crm_agent/agent/vanna_client.py` with `VannaClient` class (ChromaDB_VectorStore + OpenAI_Chat mixin), `crm_agent/agent/sql_executor.py` for safe execution.
+  - **Done**: ✅ "How many leads total?" returns correct SQL and results. OpenAI proxies patch applied to fix compatibility issues.
 
 - **Mini 2 — Seed DDL + examples**
   - **Why**: Improve SQL generation accuracy.
-  - **What**: Add DB DDL and 5–10 NL→SQL examples (counts, date ranges, status).
-  - **How**: `crm_agent/ingestion/vanna_seed.py` stores training items in Chroma.
-  - **Done**: “How many shortlisted leads in March 2024?” returns number + sensible SQL.
+  - **What**: Add DB DDL and 10 NL→SQL examples (counts, filters, aggregations, date ranges).
+  - **How**: `crm_agent/ingestion/vanna_seed.py` stores training items in Chroma via `VannaSeeder.seed()`.
+  - **Done**: ✅ Seeded 1 DDL + 10 examples. Queries working perfectly: "Show all Connected leads", "Count leads by project", "List all unique project names", etc.
+
+- **Mini 3 — T2SQL API endpoints**
+  - **Why**: Expose natural language queries via REST API.
+  - **What**: POST `/api/t2sql/query` (NL → SQL → results) and POST `/api/t2sql/seed` (training).
+  - **How**: `crm_agent/api/t2sql.py` with `query_t2sql()` and `seed_vanna()` endpoints.
+  - **Done**: ✅ Both endpoints working. Query endpoint returns SQL, rows, columns, summary. Safe execution (SELECT-only) enforced.
 
 ## 4) LangGraph router MVP
 - **Mini 1 — Graph skeleton**

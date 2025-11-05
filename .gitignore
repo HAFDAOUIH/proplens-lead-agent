@@ -73,3 +73,7 @@ htmlcov/
 *.bak
 *.cache
 
+
+# Challenge materials
+AI Engineer Challenge/
+=*

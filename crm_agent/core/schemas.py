@@ -23,3 +23,6 @@ class SearchQuery(BaseModel):
     q: str = Field(..., description="Search query string")
     k: int = Field(4, ge=1, le=20, description="Number of results to return")
     project: str = Field("", description="Filter by project name (empty = no filter)")
+
+class T2SQLQuery(BaseModel):
+    question: str = Field(..., description="Natural language question to convert to SQL")

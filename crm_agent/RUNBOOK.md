@@ -23,6 +23,22 @@ This file tracks what's DONE so far and gives copy‑pasteable commands to verif
   - Case‑insensitive matching for `status`
   - Substring OR matching for `unit_type` (e.g., "2 bed" matches variants)
 
+### Text-to-SQL ✅
+- [x] Vanna client (`VannaClient` using Groq + ChromaDB)
+  - Mixin pattern: ChromaDB_VectorStore + OpenAI_Chat
+  - Groq API configured as OpenAI-compatible endpoint
+  - Separate ChromaDB collection for training data
+- [x] SQL executor (`SQLExecutor` with safety validation)
+  - SELECT-only queries allowed
+  - Blocks dangerous keywords (DROP, DELETE, etc.)
+  - Parameterized execution via Django ORM
+- [x] Vanna seeder (`VannaSeeder`)
+  - Auto-generates DDL from Lead model
+  - 10 NL→SQL training examples (counts, filters, aggregations)
+- [x] T2SQL API endpoints
+  - POST `/api/t2sql/query` → Natural language → SQL → results
+  - POST `/api/t2sql/seed` → Seed training data
+
 ### Vector/RAG base ✅
 - [x] Embeddings infrastructure (`MiniLMEmbedder` using Sentence Transformers)
 - [x] ChromaDB persistent storage (`ChromaStore` with `PersistentClient`)
@@ -75,6 +91,10 @@ uvicorn app.asgi:application --reload --host 0.0.0.0 --port 8000
 - POST `/api/docs/upload` → form‑data `files=@*.pdf`, query: `project=...&force=true|false`
 - GET `/api/docs/search` → query: `q=...&k=4&project=...` (project optional)
 - GET `/api/docs/count` → returns `{total_chunks: N}`
+
+### Text-to-SQL
+- POST `/api/t2sql/query` → JSON body: `{question: "..."}`
+- POST `/api/t2sql/seed` → Seed Vanna with DDL and examples (run once)
 
 ### Shortlist filters (all optional individually, but pick ≥2)
 - `project_enquired: str`
@@ -152,10 +172,92 @@ curl -s "$BASE/api/docs/search?q=amenities&k=4&project=" \
 - OCR fallback triggers automatically if text layer has < 200 chars per page.
 - Chunking uses tiktoken (GPT-2 tokenizer) for accurate token counting (500 tokens target, 50 overlap).
 
+## Test Commands (Text-to-SQL)
+
+```bash
+BASE="http://127.0.0.1:8000"
+TOKEN="<PASTE_YOUR_ACCESS_TOKEN>"
+
+# 1. First, seed Vanna with DDL and examples (run once after deployment)
+# This stores: 1 DDL (schema) + 10 question-SQL pairs in ChromaDB
+curl -X POST "$BASE/api/t2sql/seed" \
+  -H "Authorization: Bearer $TOKEN" | jq
+# Expected: {"message": "Vanna seeded successfully", "ddl_items": 1, "sql_examples": 10}
+
+# 2. Test queries (similar to seeded examples - should work well)
+echo "=== Test: Count total leads ==="
+curl -X POST "$BASE/api/t2sql/query" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "How many leads total?"}' | jq
+
+echo "=== Test: Show Connected leads ==="
+curl -X POST "$BASE/api/t2sql/query" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Show all Connected leads"}' | jq
+
+echo "=== Test: Count by project ==="
+curl -X POST "$BASE/api/t2sql/query" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Count leads by project"}' | jq
+
+echo "=== Test: Budget filter ==="
+curl -X POST "$BASE/api/t2sql/query" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Leads with budget over 1 million"}' | jq
+
+# 3. New queries (Vanna will generalize from training data)
+echo "=== Test: Average budget ==="
+curl -X POST "$BASE/api/t2sql/query" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is the average budget_min?"}' | jq
+
+echo "=== Test: Filter by unit type ==="
+curl -X POST "$BASE/api/t2sql/query" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Show leads with 2 Bed units"}' | jq
+
+echo "=== Test: Distinct values ==="
+curl -X POST "$BASE/api/t2sql/query" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "List all unique project names"}' | jq
+
+echo "=== Test: Group by status ==="
+curl -X POST "$BASE/api/t2sql/query" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "How many leads by status?"}' | jq
+```
+
+**How Vanna Works:**
+- Uses RAG (Retrieval-Augmented Generation): Searches ChromaDB for similar questions/examples
+- Retrieves context: DDL (schema) + relevant question-SQL pairs
+- LLM (Groq) generates SQL using retrieved context
+- Safe execution: Only SELECT queries allowed (validated by SQLExecutor)
+
+**Training Data (from seeding):**
+- **DDL**: Database schema for `coreapp_lead` table
+- **10 Examples**: Cover COUNT, WHERE, GROUP BY, LIKE, date filtering, NULL handling, ORDER BY + LIMIT
+
 ## Next goals (planned)
 1) ✅ Brochure upload + ingest to Chroma (RAG store) - **DONE**
-2) Vanna T2SQL init + seed examples
-3) LangGraph router MVP (RAG vs T2SQL)
+2) ✅ Vanna T2SQL init + seed examples - **DONE**
+   - VannaClient with Groq + ChromaDB ✅
+   - SQL executor with safety validation ✅
+   - DDL + 10 training examples seeded ✅
+   - Query endpoint working perfectly ✅
+3) **LangGraph router MVP** (RAG vs T2SQL) - **NEXT**
+   - Intent detection: brochure questions → RAG, analytics → T2SQL
+   - Graph state management
+   - Unified `/api/agent/query` endpoint
 4) Campaign creation + personalized email generation
+5) Handle customer replies with AI agent
+6) Metrics and dashboard endpoints
 
 
