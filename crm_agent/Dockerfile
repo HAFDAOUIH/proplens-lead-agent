@@ -10,14 +10,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Copy requirements and install Python dependencies
-# Use --no-cache-dir and clean pip cache aggressively
+# Install with minimal extras to avoid heavy torch/cuda packages
 COPY crm_agent/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir --user -r requirements.txt && \
-    find /root/.local -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true && \
-    find /root/.local -type f -name "*.pyc" -delete 2>/dev/null || true && \
-    find /root/.local -type f -name "*.pyo" -delete 2>/dev/null || true && \
-    rm -rf ~/.cache/pip /tmp/* /var/tmp/* /var/lib/apt/lists/*
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir --user torch --index-url https://download.pytorch.org/whl/cpu \
+    && pip install --no-cache-dir --user -r requirements.txt \
+    && find /root/.local -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true \
+    && find /root/.local -type f -name "*.pyc" -delete 2>/dev/null || true \
+    && find /root/.local -type f -name "*.pyo" -delete 2>/dev/null || true \
+    && rm -rf ~/.cache/pip ~/.cache/huggingface /tmp/* /var/tmp/* /var/lib/apt/lists/*
 
 # Final stage - minimal runtime image
 FROM python:3.12-slim
