@@ -10,24 +10,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Copy requirements first (for better caching)
+# dockerContext = "crm_agent", so requirements.txt is at root of context
 COPY requirements.txt /app/requirements.txt
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy application code (context is crm_agent/, so . copies crm_agent contents)
 COPY . /app/
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONPATH=/app
+    PYTHONPATH=/app:/app/app \
+    DJANGO_SETTINGS_MODULE=app.settings
 
 # Create data directories
 RUN mkdir -p /app/data/chroma /app/data/brochures /app/data/checkpoints
 
-EXPOSE 8000
+EXPOSE ${PORT:-8000}
 
 # Start command
 CMD cd /app/app && \
