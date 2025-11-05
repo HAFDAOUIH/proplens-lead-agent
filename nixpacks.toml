@@ -1,10 +1,16 @@
 # Railway Nixpacks configuration for Python Django app
 
-# Tell Nixpacks this is a Python project
+# Explicitly declare Python provider to activate Python setup
+providers = ['python']
+
 [variables]
 NIXPACKS_PYTHON_VERSION = "3.12"
 
-# Install Python packages
+[phases.setup]
+# Extend default packages with '...'
+nixPkgs = ['...']
+
+# Install Python packages from subdirectory
 [phases.install]
 cmds = ["pip install -r crm_agent/requirements.txt"]
 
