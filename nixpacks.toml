@@ -3,7 +3,7 @@
 nixPkgs = ["python312"]
 
 [phases.install]
-cmds = ["cd crm_agent && pip install -r requirements.txt"]
+cmds = ["cd crm_agent && python -m pip install -r requirements.txt"]
 
 [phases.build]
 cmds = [
