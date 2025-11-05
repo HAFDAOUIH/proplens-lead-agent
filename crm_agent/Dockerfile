@@ -1,10 +1,11 @@
 FROM python:3.12-slim
 
-# Install system dependencies in one layer
+# Install system dependencies (including OCR for PDF processing)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    g++ \
-    curl \
+    tesseract-ocr \
+    libglib2.0-0 \
+    libgl1 \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -24,22 +25,17 @@ COPY . /app/
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app:/app/app \
-    DJANGO_SETTINGS_MODULE=app.settings
+    DJANGO_SETTINGS_MODULE=app.settings \
+    CHROMA_DIR=/tmp/chroma
 
-# Create data directories
-RUN mkdir -p /app/data/chroma /app/data/brochures /app/data/checkpoints
+# Create ephemeral data directory
+RUN mkdir -p /tmp/chroma && \
+    chmod 777 /tmp/chroma
 
 EXPOSE ${PORT:-8000}
 
-# Start command
+# Start command (using uvicorn for Django Ninja ASGI)
 CMD cd /app/app && \
     python manage.py migrate --noinput && \
-    python manage.py collectstatic --noinput && \
-    gunicorn app.wsgi:application \
-    --bind 0.0.0.0:${PORT:-8000} \
-    --workers 2 \
-    --threads 4 \
-    --timeout 120 \
-    --access-logfile - \
-    --error-logfile - \
-    --log-level info
+    python manage.py seed_vanna_on_startup 2>/dev/null || true && \
+    uvicorn app.asgi:application --host 0.0.0.0 --port ${PORT:-8000}
