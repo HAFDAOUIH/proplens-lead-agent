@@ -56,7 +56,7 @@ echo ""
 echo -e "${YELLOW}Testing: Login with default credentials${NC}"
 LOGIN_RESPONSE=$(curl -s -X POST "$BASE/api/login" \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin"}')
+  -d '{"username": "admin", "password": "admin123"}')
 
 echo "$LOGIN_RESPONSE" | jq '.'
 

@@ -10,10 +10,10 @@ echo "1️⃣ Health Check:"
 curl -s "$BASE/api/health" | jq
 echo ""
 
-echo "2️⃣ Login (create superuser first if this fails):"
+echo "2️⃣ Login (auto-created admin user):"
 LOGIN=$(curl -s -X POST "$BASE/api/login" \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin"}')
+  -d '{"username": "admin", "password": "admin123"}')
 echo "$LOGIN" | jq
 TOKEN=$(echo "$LOGIN" | jq -r '.access')
 echo ""
